@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lembretes - Pet Verso</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    
+    <style>
+        .reminder-card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-left: 5px solid var(--primary-color); }
+        .btn-zap { background-color: #25D366; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; transition: 0.2s; }
+        .btn-zap:hover { background-color: #1ebc57; transform: scale(1.05); }
+        .tag-dias { background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <img src="{{ url_for('static', filename='logo.png') }}?v={{ cache_buster }}" alt="Logo" class="logo-circulo">
+        </div>
+        
+        <a href="/dashboard" class="menu-item"><i class="ph ph-squares-four"></i> Visão Geral</a>
+
+        {% if tem_permissao('agenda') %}
+        <a href="/agenda" class="menu-item"><i class="ph ph-calendar-check"></i> Agenda</a>
+        {% endif %}
+
+        {% if tem_permissao('clientes') %}
+        <a href="/clientes" class="menu-item"><i class="ph ph-users"></i> Clientes</a>
+        {% endif %}
+
+        <a href="/lembretes" class="menu-item active"><i class="ph ph-bell-ringing"></i> Lembretes</a>
+
+        {% if tem_permissao('servicos') %}
+        <a href="/servicos" class="menu-item"><i class="ph ph-scissors"></i> Serviços</a>
+        {% endif %}
+
+        {% if tem_permissao('financeiro') %}
+        <a href="/financeiro" class="menu-item"><i class="ph ph-money"></i> Financeiro</a>
+        {% endif %}
+
+        {% if tem_permissao('estoque') %}
+        <a href="/estoque" class="menu-item"><i class="ph ph-package"></i> Estoque</a>
+        {% endif %}
+
+        {% if session['cargo'] == 'gerente' %}
+        <a href="/equipa" class="menu-item"><i class="ph ph-identification-badge"></i> Equipa</a>
+        {% endif %}
+
+        <a href="/configuracoes" class="menu-item"><i class="ph ph-gear"></i> Configurações</a>
+
+        <div style="margin-top: auto;">
+            <a href="/logout" class="menu-item"><i class="ph ph-sign-out"></i> Sair</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div style="margin-bottom: 2rem;">
+            <h1><i class="ph ph-clock-counter-clockwise"></i> Retornos Pendentes</h1>
+            <p style="color: var(--text-light);">
+                Pets que não tomam banho há <strong>{{ minimo_dias }} dias ou mais</strong>.
+            </p>
+        </div>
+
+        {% for item in lembretes %}
+        <div class="reminder-card">
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                    <h3 style="color: var(--primary-color); margin: 0;">{{ item['nome_pet'] }}</h3>
+                    <span class="tag-dias">Há {{ item['dias_atras'] }} dias</span>
+                </div>
+                
+                <p style="font-size: 0.9rem; color: #555;">
+                    <i class="ph ph-user"></i> Tutor: <strong>{{ item['nome_tutor'] }}</strong><br>
+                    <i class="ph ph-calendar"></i> Último banho: {{ item['data_bonita'] }} ({{ item['servico'] }})
+                </p>
+            </div>
+            
+            <a href="#" onclick="enviarZap(this, '{{ item['whatsapp'] }}', '{{ item['nome_tutor'] }}', '{{ item['nome_pet'] }}', '{{ item['dias_atras'] }}')" class="btn-zap">
+                <i class="ph ph-whatsapp-logo"></i> Chamar
+            </a>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: #999; background: white; border-radius: 12px;">
+            <i class="ph ph-check-circle" style="font-size: 3rem; margin-bottom: 10px; color: #d1d5db;"></i>
+            <p>Tudo em dia! Nenhum cliente atrasado por enquanto.</p>
+        </div>
+        {% endfor %}
+
+    </main>
+
+    <script>
+        function enviarZap(btn, zapRaw, tutor, pet, dias) {
+            let zap = zapRaw.replace(/\D/g, '');
+            if (zap.length >= 10 && zap.length <= 11) zap = '55' + zap;
+
+            if (zap.length < 10) {
+                alert("Cliente sem WhatsApp válido cadastrado.");
+                return;
+            }
+
+            // 1. Pega o modelo da mensagem que veio do Python
+            // O comando |tojson garante que quebras de linha funcionem no JS
+            let template = {{ msg_template | tojson }};
+
+            // 2. Substitui as variáveis
+            let msgFinal = template.replace(/{tutor}/g, tutor)
+                                   .replace(/{pet}/g, pet)
+                                   .replace(/{dias}/g, dias);
+
+            // 3. Abre o WhatsApp
+            const url = `https://wa.me/${zap}?text=${encodeURIComponent(msgFinal)}`;
+            window.open(url, '_blank');
+        }
+    </script>
+
+</body>
+</html>

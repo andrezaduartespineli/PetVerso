@@ -1,12 +1,17 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import sqlite3
 import os
+import time
 from datetime import date, datetime, timedelta 
 
 
 app = Flask(__name__)
 app.secret_key = 'segredo_petverso' # Necessário para usar login/sessão
 DB_NAME = "petverso.db"
+
+@app.context_processor
+def inject_cache_buster():
+    return dict(cache_buster=time.time())
 
 # --- FUNÇÕES AUXILIARES ---
 def get_db_connection():
@@ -75,7 +80,6 @@ def logout():
 
 @app.route('/dashboard')
 def dashboard():
-    # CORREÇÃO AQUI: Verifica 'user_id' em vez de 'usuario_logado'
     if 'user_id' not in session: return redirect('/login')
     
     conn = get_db_connection()
@@ -83,12 +87,12 @@ def dashboard():
     # Data de Hoje
     hoje = date.today().strftime('%Y-%m-%d')
 
-    # 1. TOTAL AGENDAMENTOS
+    # 1. TOTAL AGENDAMENTOS (Geral)
     agendamentos_hoje = conn.execute("SELECT COUNT(*) FROM agenda WHERE data = ?", (hoje,)).fetchone()[0]
 
-    # 2. FATURAMENTO
-    resultado_fatura = conn.execute("SELECT SUM(valor) FROM financeiro WHERE tipo = 'Entrada' AND data = ?", (hoje,)).fetchone()[0]
-    faturamento_hoje = resultado_fatura if resultado_fatura else 0.0
+    # 2. ATENDIMENTOS CONCLUÍDOS (Novo Cálculo!)
+    # Conta quantos estão marcados como 'Concluído' na data de hoje
+    atendimentos_concluidos = conn.execute("SELECT COUNT(*) FROM agenda WHERE data = ? AND status = 'Concluído'", (hoje,)).fetchone()[0]
 
     # 3. ESTOQUE CRÍTICO
     estoque_critico = conn.execute("SELECT COUNT(*) FROM estoque WHERE qtd_atual < qtd_minima").fetchone()[0]
@@ -100,7 +104,7 @@ def dashboard():
 
     return render_template('dashboard.html', 
                            total_agendamentos=agendamentos_hoje,
-                           faturamento=faturamento_hoje,
+                           atendimentos_concluidos=atendimentos_concluidos, # Nova variável enviada para o HTML
                            estoque_critico=estoque_critico,
                            proximos=proximos_agendamentos)
 
@@ -204,28 +208,36 @@ def agenda():
 
     # --- 2. SALVAR OU EDITAR (COM VÍNCULO DE ID) ---
     if request.method == 'POST':
+          
         acao = request.form.get('acao')
         
-        # Pega o ID do Cliente (Oculto)
+        # Pega o ID do Cliente (Oculto) e converte para Inteiro ou None
         cliente_id = request.form.get('cliente_id')
-        if not cliente_id: cliente_id = None # Garante que seja None se vazio
-        
+        if not cliente_id or cliente_id == '':
+            cliente_id = None
+        else:
+            cliente_id = int(cliente_id)
+       
         # Pega o Nome (Visual)
         nome_pet_input = request.form.get('nome_pet_input')
-        nome_pet = nome_pet_input.split(' (')[0] if nome_pet_input else "Desconhecido"
         
-        # Tenta descobrir o Tutor
-        nome_tutor = ""
+        # Lógica de segurança para extrair nomes
+        if nome_pet_input:
+            partes = nome_pet_input.split(' (')
+            nome_pet = partes[0]
+            # Se tiver parenteses pega o tutor, senão deixa vazio
+            nome_tutor = partes[1].replace(')', '') if len(partes) > 1 else ""
+        else:
+            nome_pet = "Desconhecido"
+            nome_tutor = ""
+        
+        # Se temos um cliente vinculado (ID), forçamos o nome oficial do banco
         if cliente_id:
-            # Se tem ID, busca o tutor oficial no banco
-            c = conn.execute("SELECT nome_tutor FROM clientes WHERE id=?", (cliente_id,)).fetchone()
-            if c: nome_tutor = c[0]
-        elif '(' in nome_pet_input and ')' in nome_pet_input:
-            # Se não tem ID, tenta pegar do texto digitado "Pet (Tutor)"
-            try:
-                nome_tutor = nome_pet_input.split(' (')[1].replace(')', '')
-            except:
-                nome_tutor = ""
+            c = conn.execute("SELECT nome_tutor, nome_pet FROM clientes WHERE id=?", (cliente_id,)).fetchone()
+            if c:
+                nome_tutor = c['nome_tutor']
+                # Opcional: usar o nome do pet do cadastro ou o digitado na agenda
+                # nome_pet = c['nome_pet'] 
 
         servico = request.form.get('servico')
         data = request.form.get('data')
@@ -242,8 +254,8 @@ def agenda():
             ''', (cliente_id, nome_pet, nome_tutor, servico, data, hora, taxi, obs, id_agend))
         else:
             conn.execute('''
-                INSERT INTO agenda (cliente_id, nome_pet, nome_tutor, servico, data, hora, taxi, observacoes) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO agenda (cliente_id, nome_pet, nome_tutor, servico, data, hora, taxi, observacoes, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Agendado')
             ''', (cliente_id, nome_pet, nome_tutor, servico, data, hora, taxi, obs))
             
         conn.commit()
@@ -349,7 +361,9 @@ def gerar_nota(id_agendamento):
         'tem_taxi': (agendamento['taxi'] == 'Sim'),
         'valor_taxi': preco_taxi,
         'total': total,
-        'observacoes': agendamento['observacoes']
+        'observacoes': agendamento['observacoes'],
+        'msg_nota': empresa.get('msg_nota', '') 
+    
     }
     
     return render_template('nota.html', nota=info_nota)
@@ -581,6 +595,120 @@ def clientes():
     
     return render_template('clientes.html', clientes=lista_clientes)
 
+# --- ROTA: GERAR RELATÓRIO FINANCEIRO ---
+@app.route('/relatorio_financeiro', methods=['POST'])
+def relatorio_financeiro():
+    # Segurança: Apenas Gerente pode gerar relatórios
+    if session.get('cargo') != 'gerente':
+        return "Acesso Negado: Apenas gerentes podem gerar relatórios.", 403
+
+    conn = get_db_connection()
+    
+    # 1. Pega as datas do formulário
+    data_inicio = request.form['data_inicio']
+    data_fim = request.form['data_fim']
+    
+    # Converte para objeto data para comparações
+    inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+    fim_obj = datetime.strptime(data_fim, '%Y-%m-%d').date()
+
+    # 2. Configurações (para pegar o preço do taxi)
+    try:
+        dado_taxi = conn.execute("SELECT valor FROM configuracoes WHERE chave='preco_taxi'").fetchone()
+        VALOR_TAXI = float(dado_taxi[0]) if dado_taxi else 20.00
+    except:
+        VALOR_TAXI = 20.00
+    
+    empresa = get_config_dict(conn) # Dados para o cabeçalho
+
+    # --- CÁLCULOS ---
+    itens_relatorio = []
+    total_entradas = 0.0
+    total_saidas = 0.0
+
+    # A. AGENDA (SERVIÇOS CONCLUÍDOS NO PERÍODO)
+    agendamentos = conn.execute('''
+        SELECT a.data, a.nome_pet, a.servico, a.taxi, s.valor 
+        FROM agenda a
+        JOIN servicos s ON a.servico = s.nome
+        WHERE a.status = 'Concluído' AND a.data BETWEEN ? AND ?
+        ORDER BY a.data
+    ''', (data_inicio, data_fim)).fetchall()
+
+    for ag in agendamentos:
+        valor = ag['valor']
+        desc = f"Serviço: {ag['nome_pet']} ({ag['servico']})"
+        if ag['taxi'] == 'Sim':
+            valor += VALOR_TAXI
+            desc += " + Taxi"
+        
+        itens_relatorio.append({
+            'data': ag['data'],
+            'descricao': desc,
+            'tipo': 'Entrada',
+            'valor': valor
+        })
+        total_entradas += valor
+
+    # B. MOVIMENTAÇÕES MANUAIS (NO PERÍODO)
+    movimentacoes = conn.execute('''
+        SELECT * FROM financeiro 
+        WHERE data BETWEEN ? AND ?
+        ORDER BY data
+    ''', (data_inicio, data_fim)).fetchall()
+
+    for mov in movimentacoes:
+        itens_relatorio.append({
+            'data': mov['data'],
+            'descricao': mov['descricao'],
+            'tipo': mov['tipo'],
+            'valor': mov['valor']
+        })
+        if mov['tipo'] == 'Entrada':
+            total_entradas += mov['valor']
+        else:
+            total_saidas += mov['valor']
+
+    # C. DESPESAS FIXAS (SE O DIA DE VENCIMENTO CAIR NO PERÍODO)
+    # Exemplo: Se o relatório é de 01/01 a 15/01, a conta do dia 10 entra. A do dia 20 não.
+    fixas = conn.execute("SELECT * FROM despesas_fixas").fetchall()
+    
+    # Precisamos iterar dia a dia ou verificar matematicamente. 
+    # Método simples: Verificar se o dia de vencimento existe dentro do range de meses/dias selecionados.
+    # Para simplificar: Vamos verificar mês a mês dentro do intervalo.
+    
+    # Lógica simplificada: Percorre os meses do intervalo
+    # (Funciona bem para períodos curtos ou dentro do mesmo ano)
+    curr_date = inicio_obj
+    while curr_date <= fim_obj:
+        dia_atual = curr_date.day
+        # Verifica se tem conta vencendo neste dia
+        for f in fixas:
+            if f['dia_vencimento'] == dia_atual:
+                itens_relatorio.append({
+                    'data': curr_date.strftime('%Y-%m-%d'),
+                    'descricao': f"Fixo: {f['nome']}",
+                    'tipo': 'Saida',
+                    'valor': f['valor']
+                })
+                total_saidas += f['valor']
+        
+        curr_date += timedelta(days=1)
+
+    # Ordena tudo por data
+    itens_relatorio.sort(key=lambda x: x['data'])
+
+    conn.close()
+
+    return render_template('relatorio_financeiro.html', 
+                           empresa=empresa,
+                           itens=itens_relatorio,
+                           data_inicio=datetime.strptime(data_inicio, '%Y-%m-%d').strftime('%d/%m/%Y'),
+                           data_fim=datetime.strptime(data_fim, '%Y-%m-%d').strftime('%d/%m/%Y'),
+                           total_entradas=total_entradas,
+                           total_saidas=total_saidas,
+                           saldo=total_entradas - total_saidas)
+
 @app.route('/estoque', methods=['GET', 'POST'])
 def estoque():
     if not tem_permissao('estoque'): return redirect('/dashboard')
@@ -639,35 +767,49 @@ def equipa():
         
         if acao == 'deletar':
             id_user = request.form.get('id')
-            # Proteção: Não deixa deletar a si mesmo
             if int(id_user) != session['user_id']:
                 conn.execute("DELETE FROM usuarios WHERE id=?", (id_user,))
         
         else:
-            # SALVAR / EDITAR
+            # --- PEGAR TODOS OS DADOS DO FORMULÁRIO ---
             id_user = request.form.get('id')
             nome = request.form.get('nome')
             usuario = request.form.get('usuario')
             senha = request.form.get('senha')
             cargo = request.form.get('cargo')
             
-            # Pega as caixinhas marcadas no HTML
-            lista_perms = request.form.getlist('perms') # Retorna lista ['agenda', 'clientes']
-            permissoes_str = ",".join(lista_perms) # Vira texto "agenda,clientes"
+            # Novos campos
+            cpf = request.form.get('cpf')
+            email = request.form.get('email')
+            telefone = request.form.get('telefone')
+            cep = request.form.get('cep')
+            endereco = request.form.get('endereco')
+            
+            # Permissões
+            lista_perms = request.form.getlist('perms')
+            permissoes_str = ",".join(lista_perms)
 
             if id_user:
-                conn.execute('''UPDATE usuarios SET nome=?, usuario=?, senha=?, cargo=?, permissoes=? WHERE id=?''',
-                             (nome, usuario, senha, cargo, permissoes_str, id_user))
+                # ATUALIZAR (UPDATE)
+                conn.execute('''
+                    UPDATE usuarios 
+                    SET nome=?, usuario=?, senha=?, cargo=?, permissoes=?, 
+                        cpf=?, email=?, telefone=?, cep=?, endereco=?
+                    WHERE id=?
+                ''', (nome, usuario, senha, cargo, permissoes_str, cpf, email, telefone, cep, endereco, id_user))
             else:
-                conn.execute('''INSERT INTO usuarios (nome, usuario, senha, cargo, permissoes) VALUES (?, ?, ?, ?, ?)''',
-                             (nome, usuario, senha, cargo, permissoes_str))
+                # INSERIR (INSERT)
+                conn.execute('''
+                    INSERT INTO usuarios (nome, usuario, senha, cargo, permissoes, cpf, email, telefone, cep, endereco) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (nome, usuario, senha, cargo, permissoes_str, cpf, email, telefone, cep, endereco))
         
         conn.commit()
         return redirect('/equipa')
 
     usuarios = conn.execute("SELECT * FROM usuarios").fetchall()
     conn.close()
-    return render_template('equipa.html', usuarios=usuarios)
+    return render_template('equipa.html', equipe=usuarios)
 
 # ROTA PARA MARCAR COMO CONCLUÍDO
 @app.route('/concluir_agendamento', methods=['POST'])
@@ -691,31 +833,141 @@ def get_config_dict(conn):
     dados = {linha['chave']: linha['valor'] for linha in linhas}
     return dados
 
-# --- NOVA ROTA: CONFIGURAÇÕES DA EMPRESA ---
+
+# --- ROTA: CONFIGURAÇÕES (ATUALIZADA COM TUDO) ---
 @app.route('/configuracoes', methods=['GET', 'POST'])
 def configuracoes():
-    if not tem_permissao('financeiro'): return redirect('/dashboard') # Regra de segurança
+    # 1. Verifica se está logado
+    if 'user_id' not in session: return redirect('/login')
+
+    # 2. BLOQUEIO DE SEGURANÇA
+    # Se não for gerente, manda de volta para o dashboard
+    if session.get('cargo') != 'gerente':
+        return redirect('/dashboard')
     
     conn = get_db_connection()
 
     if request.method == 'POST':
-        # Salva cada campo que veio do formulário
-        campos = ['empresa_nome', 'empresa_cnpj', 'empresa_endereco', 'empresa_telefone', 'empresa_email', 'empresa_instagram']
+        acao = request.form.get('acao')
+
+        # 1. SALVAR DADOS DA EMPRESA (Incluindo a nova mensagem)
+        if acao == 'empresa':
+            if not tem_permissao('financeiro'): 
+                conn.close()
+                return "Sem permissão", 403
+
+            # AQUI ESTÁ A MUDANÇA: Adicionei 'msg_lembrete' na lista
+            campos = ['empresa_nome', 'empresa_cnpj', 'empresa_endereco', 
+                      'empresa_telefone', 'empresa_email', 'empresa_instagram', 
+                      'msg_lembrete','msg_nota'] 
+
+            for campo in campos:
+                valor = request.form.get(campo)
+                conn.execute("INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)", (campo, valor))
+            conn.commit()
         
-        for campo in campos:
-            valor = request.form.get(campo)
-            # Atualiza ou Insere (UPSERT logic simples)
-            conn.execute("INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)", (campo, valor))
+        # 2. ALTERAR LOGIN (SENHA)
+        elif acao == 'conta':
+            novo_usuario = request.form.get('novo_usuario')
+            nova_senha = request.form.get('nova_senha')
+            user_id = session['user_id']
+
+            try:
+                conn.execute("UPDATE usuarios SET usuario = ?, senha = ? WHERE id = ?", (novo_usuario, nova_senha, user_id))
+                conn.commit()
+                session['usuario'] = novo_usuario 
+            except sqlite3.IntegrityError:
+                return "Erro: Este nome de usuário já está em uso."
+
+        # 3. UPLOAD DA LOGO
+        elif acao == 'upload_logo':
+            print("--- TENTATIVA DE UPLOAD INICIADA ---")
             
-        conn.commit()
+            if 'arquivo_logo' not in request.files:
+                print("ERRO: Campo arquivo_logo não encontrado.")
+            else:
+                arquivo = request.files['arquivo_logo']
+                if arquivo.filename == '':
+                    print("ERRO: Nenhum arquivo selecionado.")
+                else:
+                    try:
+                        caminho_logo = os.path.join(app.root_path, 'static', 'logo.png')
+                        
+                        if os.path.exists(caminho_logo):
+                            try: os.remove(caminho_logo)
+                            except: pass
+
+                        arquivo.save(caminho_logo)
+                        print(f"SUCESSO: Logo salva em {caminho_logo}")
+                        time.sleep(1) 
+                    except Exception as e:
+                        print(f"ERRO CRÍTICO: {e}")
+
         conn.close()
         return redirect('/configuracoes')
 
-    # Busca os dados para mostrar na tela
+    # Busca dados para exibir na tela
     conf = get_config_dict(conn)
+    
+    # Busca dados do usuário logado
+    usuario_atual = conn.execute("SELECT usuario, senha FROM usuarios WHERE id = ?", (session['user_id'],)).fetchone()
     conn.close()
     
-    return render_template('configuracoes.html', conf=conf)
+    return render_template('configuracoes.html', conf=conf, user=usuario_atual, cache_buster=time.time())
+
+    # Busca dados para exibir
+    conf = get_config_dict(conn)
+    usuario_atual = conn.execute("SELECT usuario, senha FROM usuarios WHERE id = ?", (session['user_id'],)).fetchone()
+    conn.close()
+    
+    # "cache_buster" é um número aleatório para obrigar o navegador a carregar a imagem nova
+    return render_template('configuracoes.html', conf=conf, user=usuario_atual, cache_buster=time.time())
+
+# --- ROTA: LEMBRETES INTELIGENTES (ATRASADOS 10+ DIAS) ---
+@app.route('/lembretes')
+def lembretes():
+    if 'user_id' not in session: return redirect('/login')
+    
+    conn = get_db_connection()
+    
+    # 1. Pega a mensagem personalizada do banco
+    config = get_config_dict(conn)
+    msg_padrao = "Olá {tutor}! 🐾\nNotei que o(a) *{pet}* tomou banho há {dias} dias.\nQue tal agendar um horário? 🛁"
+    mensagem_uso = config.get('msg_lembrete', msg_padrao) # Usa a do banco ou a padrão
+    if not mensagem_uso: mensagem_uso = msg_padrao
+
+    # 2. Lógica de busca dos atrasados (mantém igual ao anterior)
+    hoje = date.today()
+    dias_corte = 10
+    data_limite = (hoje - timedelta(days=dias_corte)).strftime('%Y-%m-%d')
+    
+    sql = '''
+        SELECT a.id, MAX(a.data) as ultima_data, a.servico, 
+               c.nome_tutor, c.nome_pet, c.whatsapp
+        FROM agenda a
+        JOIN clientes c ON a.cliente_id = c.id
+        WHERE a.status = 'Concluído'
+        GROUP BY a.cliente_id
+        HAVING ultima_data <= ?
+        ORDER BY ultima_data ASC
+    '''
+    raw_lista = conn.execute(sql, (data_limite,)).fetchall()
+    conn.close()
+
+    lista_final = []
+    for item in raw_lista:
+        data_banho = datetime.strptime(item['ultima_data'], '%Y-%m-%d').date()
+        dias_atras = (hoje - data_banho).days
+        paciente = dict(item)
+        paciente['dias_atras'] = dias_atras
+        paciente['data_bonita'] = data_banho.strftime('%d/%m/%Y')
+        lista_final.append(paciente)
+    
+    # Passamos a 'mensagem_uso' para o HTML
+    return render_template('lembretes.html', 
+                           lembretes=lista_final, 
+                           minimo_dias=dias_corte,
+                           msg_template=mensagem_uso)
 
 if __name__ == '__main__':
     app.run(debug=True)

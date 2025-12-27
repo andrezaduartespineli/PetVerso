@@ -68,10 +68,10 @@
         <a href="#" id="btnZap" target="_blank" class="btn btn-whatsapp"><i class="ph ph-whatsapp-logo"></i> Enviar WhatsApp</a>
         <a href="/agenda" class="btn btn-back"><i class="ph ph-arrow-left"></i> Voltar</a>
     </div>
-
+<div class="page">
    <div class="header">
             <div class="logo-area">
-                <img src="{{ url_for('static', filename='sua-logo.png') }}" class="logo-img" alt="Logo">
+                <img src="{{ url_for('static', filename='logo.png') }}?v={{ cache_buster }}" class="logo-img" alt="Logo">
                 <div class="company-info">
                     <h1>{{ nota['empresa_nome'] }}</h1>
                     <p>{{ nota['empresa_endereco'] }}</p>
@@ -138,51 +138,47 @@
     </div>
 
     <script>
-        // 1. Pega os dados do Python
-        // O 'or ""' garante que não quebre se estiver vazio
-        let telefoneRaw = "{{ nota['whatsapp'] or '' }}"; 
-        
-        // 2. Limpa o telefone (deixa só números)
-        let telefone = telefoneRaw.replace(/\D/g, '');
+        // 1. Pega o telefone
+        let telefoneRaw = "{{ nota['empresa_telefone'] or '' }}"; 
+        // Se tiver telefone do cliente, usa ele, senão usa o da empresa (ou vazio)
+        {% if nota['whatsapp'] %}
+            telefoneRaw = "{{ nota['whatsapp'] }}";
+        {% endif %}
 
-        // 3. Verifica se precisa adicionar o 55 (Brasil)
-        // Se o número tiver entre 10 e 11 dígitos (ex: 11999998888), adiciona o 55 na frente
+        let telefone = telefoneRaw.replace(/\D/g, '');
         if (telefone.length >= 10 && telefone.length <= 11) {
             telefone = '55' + telefone;
         }
 
-        // 4. Monta o texto da mensagem
-        const nomeTutor = "{{ nota['tutor'] }}";
-        const nomePet = "{{ nota['pet'] }}";
-        const data = "{{ nota['data'] }}";
-        const servico = "{{ nota['servico'] }}";
-        // Formata o valor no Javascript para garantir
-        const total = "{{ '%.2f'|format(nota['total']) }}".replace('.', ','); 
+        // 2. Define o modelo da mensagem
+        // Se você salvou algo nas configurações, usa ele. Se não, usa o padrão.
+        let template = {{ nota['msg_nota'] | tojson }};
+        
+        if (!template || template === "") {
+            // MENSAGEM PADRÃO (Caso não tenha configurado nada)
+            template = "Olá {tutor}! 🐾\nSegue o resumo do atendimento do(a) *{pet}*:\n\n🗓 Data: {data}\n✂ Serviço: {servico}\n💰 *Total: R$ {total}*\n\nObrigado pela preferência!";
+        }
 
-        // Usamos \n para pular linha aqui no código JS
-        const textoMensagem = `Olá ${nomeTutor}! 🐾\n\nSegue o resumo do atendimento do(a) *${nomePet}*:\n\n🗓 Data: ${data}\n✂ Serviço: ${servico}\n💰 *Total: R$ ${total}*\n\nObrigado pela preferência!`;
+        // 3. Substitui as variáveis
+        const totalFormatado = "{{ '%.2f'|format(nota['total']) }}".replace('.', ',');
+        
+        let msgFinal = template.replace(/{tutor}/g, "{{ nota['tutor'] }}")
+                               .replace(/{pet}/g, "{{ nota['pet'] }}")
+                               .replace(/{data}/g, "{{ nota['data'] }}")
+                               .replace(/{servico}/g, "{{ nota['servico'] }}")
+                               .replace(/{total}/g, totalFormatado);
 
-        // 5. O SEGREDO: encodeURIComponent
-        // Isso transforma espaços e enters em códigos que o navegador entende
-        const textoCodificado = encodeURIComponent(textoMensagem);
-
-        // 6. Atualiza o link do botão
+        // 4. Cria o link
         const btnZap = document.getElementById('btnZap');
-
         if (telefone.length > 10) {
-            // Se tem número válido, cria o link
-            btnZap.href = `https://wa.me/${telefone}?text=${textoCodificado}`;
+            btnZap.href = `https://wa.me/${telefone}?text=${encodeURIComponent(msgFinal)}`;
         } else {
-            // Se não tem número, avisa ao clicar
             btnZap.href = "#";
-            btnZap.onclick = function() {
-                alert("O número de WhatsApp deste cliente não foi preenchido ou é inválido.");
-            };
-            // Opcional: Deixa o botão cinza
+            btnZap.onclick = function() { alert("Telefone inválido."); };
             btnZap.style.background = "#ccc";
             btnZap.style.cursor = "not-allowed";
         }
     </script>
-
+<script src="static/script.js"></script>
 </body>
 </html>

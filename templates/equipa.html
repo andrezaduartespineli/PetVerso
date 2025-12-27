@@ -9,8 +9,6 @@
     <link rel="stylesheet" href="/static/style.css">
 
     <style>
-       
-        /* Tabela */
         .team-container { background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; background: #f9fafb; padding: 1rem; color: #9ca3af; font-size: 0.9rem; }
@@ -29,12 +27,12 @@
         .btn-edit:hover { color: var(--primary-color); }
         .btn-trash:hover { color: #dc2626; }
 
-        /* Modal */
+        /* Modal Ajustado para mais campos */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal { background: white; width: 700px; max-width: 95%; padding: 2rem; border-radius: 12px; }
+        .modal { background: white; width: 800px; max-width: 95%; padding: 2rem; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
         .modal h2 { margin-bottom: 1.5rem; color: var(--primary-color); border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
         
-        .form-row { display: flex; gap: 15px; margin-bottom: 1rem; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 0.5rem; }
         .form-group { flex: 1; margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; font-weight: 600; }
         .form-group input, .form-group select { width: 100%; padding: 0.7rem; border: 1px solid #d1d5db; border-radius: 6px; outline: none; }
@@ -43,7 +41,7 @@
 <body>
   <nav class="sidebar">
     <div class="sidebar-header">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-circulo">
+        <img src="{{ url_for('static', filename='logo.png') }}?v={{ cache_buster }}" alt="Logo" class="logo-circulo">
     </div>
     
     <a href="/dashboard" class="menu-item"><i class="ph ph-squares-four"></i> Visão Geral</a>
@@ -55,6 +53,8 @@
     {% if tem_permissao('clientes') %}
     <a href="/clientes" class="menu-item"><i class="ph ph-users"></i> Clientes</a>
     {% endif %}
+
+    <a href="/lembretes" class="menu-item"><i class="ph ph-bell-ringing"></i> Lembretes</a>
 
     {% if tem_permissao('servicos') %}
     <a href="/servicos" class="menu-item"><i class="ph ph-scissors"></i> Serviços</a>
@@ -72,7 +72,9 @@
     <a href="/equipa" class="menu-item"><i class="ph ph-identification-badge"></i> Equipa</a>
     {% endif %}
 
+    {% if session['cargo'] == 'gerente' %}
     <a href="/configuracoes" class="menu-item"><i class="ph ph-gear"></i> Configurações</a>
+{% endif %}
 
     <div style="margin-top: auto;">
         <a href="/logout" class="menu-item"><i class="ph ph-sign-out"></i> Sair</a>
@@ -95,6 +97,7 @@
                 <thead>
                     <tr>
                         <th>Colaborador</th>
+                        <th>Contato</th>
                         <th>Cargo</th>
                         <th>Login</th>
                         <th>Ações</th>
@@ -106,7 +109,16 @@
                         <td>
                             <div class="employee-profile">
                                 <div class="avatar-circle">{{ membro['nome'][0:2] }}</div>
-                                <span style="font-weight: 600;">{{ membro['nome'] }}</span>
+                                <div>
+                                    <span style="font-weight: 600; display:block;">{{ membro['nome'] }}</span>
+                                    <span style="font-size:0.8rem; color:#888;">CPF: {{ membro['cpf'] or '--' }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size:0.85rem; color:#555;">
+                                <div><i class="ph ph-envelope"></i> {{ membro['email'] or '--' }}</div>
+                                <div><i class="ph ph-phone"></i> {{ membro['telefone'] or '--' }}</div>
                             </div>
                         </td>
                         <td>
@@ -121,6 +133,11 @@
                                 <button onclick="editarUsuario(this)" 
                                     data-id="{{ membro['id'] }}"
                                     data-nome="{{ membro['nome'] }}"
+                                    data-cpf="{{ membro['cpf'] }}"
+                                    data-email="{{ membro['email'] }}"
+                                    data-telefone="{{ membro['telefone'] }}"
+                                    data-cep="{{ membro['cep'] }}"
+                                    data-endereco="{{ membro['endereco'] }}"
                                     data-cargo="{{ membro['cargo'] }}"
                                     data-user="{{ membro['usuario'] }}"
                                     data-senha="{{ membro['senha'] }}"
@@ -140,7 +157,7 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4" style="text-align:center; padding:2rem; color:#999;">Nenhum funcionário cadastrado.</td></tr>
+                    <tr><td colspan="5" style="text-align:center; padding:2rem; color:#999;">Nenhum funcionário cadastrado.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -157,19 +174,52 @@
                 <input type="hidden" name="acao" value="salvar">
                 <input type="hidden" name="id" id="inputId">
 
-                <div class="form-group">
-                    <label>Nome Completo</label>
-                    <input type="text" name="nome" id="inputNome" required>
+                <div class="form-row">
+                    <div class="form-group" style="flex:2;">
+                        <label>Nome Completo</label>
+                        <input type="text" name="nome" id="inputNome" required>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>CPF</label>
+                        <input type="text" name="cpf" id="inputCpf" placeholder="000.000.000-00"
+       oninput="mascaraCPF(this)" maxlength="14">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>E-mail</label>
+                        <input type="email" name="email" id="inputEmail">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone / WhatsApp</label>
+                        <input type="text" name="telefone" id="inputTelefone"
+       oninput="mascaraTelefone(this)" maxlength="15">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>CEP</label>
+                        <input type="text" name="cep" id="inputCep" placeholder="00000-000"
+       onblur="buscarCep(this.value)" oninput="mascaraCEP(this)" maxlength="9">
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label>Endereço Completo</label>
+                        <input type="text" name="endereco" id="inputEndereco">
+                    </div>
                 </div>
                 
+                <hr style="border:0; border-top:1px solid #eee; margin: 15px 0;">
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Usuário (Login)</label>
-                        <input type="text" name="usuario" id="inputUser" required>
+                        <input type="text" name="usuario" id="inputUser" required placeholder="Ex: joao.silva">
                     </div>
                     <div class="form-group">
-                        <label>Senha</label>
-                        <input type="text" name="senha" id="inputSenha" required>
+                        <label>Senha de Acesso</label>
+                        <input type="text" name="senha" id="inputSenha" required minlength="6" placeholder="Mínimo 6 caracteres">
                     </div>
                 </div>
 
@@ -177,6 +227,8 @@
                     <label>Cargo</label>
                     <select name="cargo" id="inputCargo" onchange="togglePermissoes()">
                         <option value="funcionario">Funcionário</option>
+                        <option value="recepcao">Recepção</option>
+                        <option value="tosador">Tosador</option>
                         <option value="gerente">Gerente (Acesso Total)</option>
                     </select>
                 </div>
@@ -205,22 +257,20 @@
 
                 <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1rem;">
                     <button type="button" onclick="fecharModal()" style="background:#eee; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Cancelar</button>
-                    <button type="submit" style="background:var(--primary-color); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Salvar</button>
+                    <button type="submit" style="background:var(--primary-color); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Salvar Colaborador</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        // Funções que estavam faltando
         function novoColaborador() {
             document.getElementById('formEquipa').reset();
             document.getElementById('inputId').value = ''; 
             document.getElementById('tituloModal').innerText = 'Cadastro de Funcionário';
             
-            // Limpa checkboxes
             document.querySelectorAll('.chk-perm').forEach(chk => chk.checked = false);
-            togglePermissoes(); // Garante estado inicial correto
+            togglePermissoes();
             
             document.getElementById('modalEquipe').style.display = 'flex';
         }
@@ -239,17 +289,41 @@
             }
         }
 
+        // Função do ViaCEP
+        function buscarCep(cep) {
+            cep = cep.replace(/\D/g, '');
+            if (cep.length === 8) {
+                document.getElementById('inputEndereco').value = "Buscando...";
+                fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.erro) {
+                            document.getElementById('inputEndereco').value = `${data.logradouro}, ${data.bairro} - ${data.localidade}/${data.uf}`;
+                        } else {
+                            document.getElementById('inputEndereco').value = "";
+                            alert("CEP não encontrado.");
+                        }
+                    })
+                    .catch(() => alert("Erro ao buscar CEP."));
+            }
+        }
+
         function editarUsuario(btn) {
             document.getElementById('inputId').value = btn.getAttribute('data-id');
             document.getElementById('inputNome').value = btn.getAttribute('data-nome');
+            
+            // Novos campos: O '||' garante que não fique "null" se estiver vazio
+            document.getElementById('inputCpf').value = btn.getAttribute('data-cpf') || '';
+            document.getElementById('inputEmail').value = btn.getAttribute('data-email') || '';
+            document.getElementById('inputTelefone').value = btn.getAttribute('data-telefone') || '';
+            document.getElementById('inputCep').value = btn.getAttribute('data-cep') || '';
+            document.getElementById('inputEndereco').value = btn.getAttribute('data-endereco') || '';
+
             document.getElementById('inputUser').value = btn.getAttribute('data-user');
             document.getElementById('inputSenha').value = btn.getAttribute('data-senha');
             document.getElementById('inputCargo').value = btn.getAttribute('data-cargo');
             
-            // Limpa todas as caixas
             document.querySelectorAll('.chk-perm').forEach(chk => chk.checked = false);
-
-            // Marca as que o usuário tem
             let perms = btn.getAttribute('data-perms');
             if (perms) {
                 let lista = perms.split(',');
@@ -264,5 +338,6 @@
             document.getElementById('modalEquipe').style.display = 'flex';
         }
     </script>
+     <script src="static/script.js"></script>
 </body>
 </html>

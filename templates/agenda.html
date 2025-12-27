@@ -57,7 +57,7 @@
 <body>
   <nav class="sidebar">
     <div class="sidebar-header">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-circulo">
+        <img src="{{ url_for('static', filename='logo.png') }}?v={{ cache_buster }}" alt="Logo" class="logo-circulo">
     </div>
     
     <a href="/dashboard" class="menu-item"><i class="ph ph-squares-four"></i> Visão Geral</a>
@@ -69,6 +69,8 @@
     {% if tem_permissao('clientes') %}
     <a href="/clientes" class="menu-item"><i class="ph ph-users"></i> Clientes</a>
     {% endif %}
+
+    <a href="/lembretes" class="menu-item"><i class="ph ph-bell-ringing"></i> Lembretes</a>
 
     {% if tem_permissao('servicos') %}
     <a href="/servicos" class="menu-item"><i class="ph ph-scissors"></i> Serviços</a>
@@ -86,7 +88,9 @@
     <a href="/equipa" class="menu-item"><i class="ph ph-identification-badge"></i> Equipa</a>
     {% endif %}
 
+    {% if session['cargo'] == 'gerente' %}
     <a href="/configuracoes" class="menu-item"><i class="ph ph-gear"></i> Configurações</a>
+{% endif %}
 
     <div style="margin-top: auto;">
         <a href="/logout" class="menu-item"><i class="ph ph-sign-out"></i> Sair</a>
@@ -146,7 +150,7 @@
 
                     <button onclick="editarAgendamento(this)"
                         data-id="{{ item['id'] }}"
-                        data-cliente-id="{{ item['cliente_id'] }}"  data-pet="{{ item['nome_pet'] }}"
+                        data-cliente-id="{{ item['cliente_id'] }}"
                         data-pet="{{ item['nome_pet'] }}"
                         data-tutor="{{ item['nome_tutor'] }}"
                         data-servico="{{ item['servico'] }}"
@@ -402,5 +406,6 @@
              }
         });
     </script>
+    <script src="static/script.js"></script>
 </body>
 </html>
