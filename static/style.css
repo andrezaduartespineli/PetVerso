@@ -1,20 +1,66 @@
-/* CSS LOGO*/
-        .sidebar-header {
-    display: flex;
-    justify-content: center; /* Centraliza horizontalmente */
-    align-items: center;     /* Centraliza verticalmente */
-    margin-bottom: 2rem;     /* Espaço abaixo da logo */
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #f3f4f6; /* Opcional: linha sutil abaixo da logo */
+:root {
+    --primary-color: #0e7490;
+    --bg-color: #f3f4f6;
+    --text-dark: #1f2937;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+
+/* Estrutura Principal */
+body { 
+    background-color: var(--bg-color); 
+    color: var(--text-dark); 
+    display: flex; 
+    height: 100vh; 
+    overflow: hidden; 
+}
+
+/* Sidebar Fixa */
+.sidebar { 
+    width: 260px; 
+    background: white; 
+    border-right: 1px solid #e5e7eb; 
+    padding: 1.5rem; 
+    display: flex; 
+    flex-direction: column; 
+    flex-shrink: 0;
+}
+
+.sidebar-header { 
+    margin-bottom: 3rem; 
+    display: flex; 
+    justify-content: center; 
 }
 
 .logo-circulo {
-    width: 90px;             /* Logo maior para destaque */
-    height: 90px;            /* Altura igual a largura */
-    border-radius: 50%;      /* Deixa redondo */
-    object-fit: cover;       /* Ajusta a imagem dentro do círculo */
-    border: 3px solid var(--primary-color); /* Borda elegante */
-    padding: 3px;            /* Espaço entre a borda e a foto */
-    background: white;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary-color);
+    padding: 3px;
 }
-/* FIM CSS LOGO*/
+
+.menu-item { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    padding: 1rem; 
+    color: var(--text-dark); 
+    text-decoration: none; 
+    border-radius: 8px; 
+    margin-bottom: 0.5rem; 
+    transition: 0.3s;
+}
+
+.menu-item:hover, .menu-item.active { 
+    background-color: #ecfeff; 
+    color: var(--primary-color); 
+}
+
+/* Conteúdo que rola */
+.main-content { 
+    flex: 1; 
+    padding: 2rem; 
+    overflow-y: auto; 
+}

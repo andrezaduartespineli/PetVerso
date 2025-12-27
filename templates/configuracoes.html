@@ -6,28 +6,9 @@
     <title>Configurações - Pet Verso</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="/static/style.css">
 
     <style>
-        :root { --primary-color: #0e7490; --bg-color: #f3f4f6; --text-dark: #1f2937; }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
-
-         /* --- SIDEBAR --- */
-        .sidebar {
-            width: 260px; background-color: white; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; padding: 1.5rem; flex-shrink: 0;
-        }
-        .sidebar-header { margin-bottom: 3rem; display: flex; align-items: center; gap: 10px; color: var(--primary-color); font-weight: bold; font-size: 1.2rem; }
-        
-        .menu-item {
-            display: flex; align-items: center; gap: 12px; padding: 1rem; color: var(--text-dark); text-decoration: none;
-            border-radius: 8px; margin-bottom: 0.5rem; transition: 0.3s; cursor: pointer;
-        }
-        .menu-item:hover, .menu-item.active { background-color: #ecfeff; color: var(--primary-color); }
-        .menu-item i { font-size: 1.3rem; }
-
-        /* --- MAIN CONTENT --- */
-        .main-content { flex: 1; padding: 2rem; overflow-y: auto; }
-        
 
         .config-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 800px; margin: 0 auto; }
         .form-group { margin-bottom: 1.5rem; }
