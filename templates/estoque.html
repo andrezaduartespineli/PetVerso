@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estoque - Pet Verso</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="/static/style.css">
+
+    <style>
+        :root {
+            --primary-color: #0e7490;
+            --secondary-color: #155e75;
+            --accent-color: #f59e0b;
+            --bg-color: #f3f4f6;
+            --text-dark: #1f2937;
+            --text-light: #9ca3af;
+            --danger-color: #ef4444;
+            --success-color: #10b981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px; background-color: white; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; padding: 1.5rem; flex-shrink: 0;
+        }
+        .sidebar-header { margin-bottom: 3rem; display: flex; align-items: center; gap: 10px; color: var(--primary-color); font-weight: bold; font-size: 1.2rem; }
+        .menu-item {
+            display: flex; align-items: center; gap: 12px; padding: 1rem; color: var(--text-dark); text-decoration: none;
+            border-radius: 8px; margin-bottom: 0.5rem; transition: 0.3s; cursor: pointer;
+        }
+        .menu-item:hover, .menu-item.active { background-color: #ecfeff; color: var(--primary-color); }
+        .menu-item i { font-size: 1.3rem; }
+
+        /* --- MAIN CONTENT --- */
+        .main-content { flex: 1; display: flex; flex-direction: column; padding: 2rem; overflow-y: auto; }
+
+        /* Cabeçalho */
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .btn-add {
+            background-color: var(--primary-color); color: white; border: none; padding: 0.8rem 1.5rem;
+            border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s;
+        }
+        .btn-add:hover { background-color: var(--secondary-color); }
+
+        /* Cards de Resumo */
+        .stock-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; }
+        .stat-info h3 { font-size: 2rem; color: var(--text-dark); margin-bottom: 5px; }
+        .stat-info span { color: var(--text-light); font-size: 0.9rem; }
+        .stat-icon { font-size: 2.5rem; opacity: 0.2; }
+
+        /* Tabela de Estoque */
+        .stock-table-container { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; background: #f9fafb; padding: 1rem; color: var(--text-light); font-weight: 500; font-size: 0.9rem; }
+        td { padding: 1rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; font-size: 0.95rem; }
+        
+        /* Estilos da Tabela */
+        .product-name { font-weight: 600; display: block; }
+        .product-cat { font-size: 0.8rem; background: #f3f4f6; padding: 2px 8px; border-radius: 4px; color: var(--text-light); }
+        
+        .stock-level-bar { width: 100px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; margin-top: 5px; }
+        .level-fill { height: 100%; border-radius: 3px; }
+        .level-fill.good { background-color: var(--success-color); width: 80%; }
+        .level-fill.low { background-color: var(--danger-color); width: 20%; }
+
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .status-ok { background: #ecfdf5; color: var(--success-color); }
+        .status-low { background: #fef2f2; color: var(--danger-color); }
+
+        .btn-icon { background: none; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px; cursor: pointer; color: var(--text-dark); transition: 0.2s; }
+        .btn-icon:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .btn-trash:hover { border-color: var(--danger-color); color: var(--danger-color); }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: white; width: 500px; padding: 2rem; border-radius: 12px; }
+        .modal h2 { margin-bottom: 1.5rem; color: var(--primary-color); }
+        .form-row { display: flex; gap: 15px; }
+        .form-group { margin-bottom: 1rem; flex: 1; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; font-weight: 600; }
+        .form-group input, .form-group select { width: 100%; padding: 0.7rem; border: 1px solid #d1d5db; border-radius: 6px; outline: none; }
+
+    </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-circulo">
+    </div>
+    
+    <a href="/dashboard" class="menu-item"><i class="ph ph-squares-four"></i> Visão Geral</a>
+
+    {% if tem_permissao('agenda') %}
+    <a href="/agenda" class="menu-item"><i class="ph ph-calendar-check"></i> Agenda</a>
+    {% endif %}
+
+    {% if tem_permissao('clientes') %}
+    <a href="/clientes" class="menu-item"><i class="ph ph-users"></i> Clientes</a>
+    {% endif %}
+
+    {% if tem_permissao('servicos') %}
+    <a href="/servicos" class="menu-item"><i class="ph ph-scissors"></i> Serviços</a>
+    {% endif %}
+
+    {% if tem_permissao('financeiro') %}
+    <a href="/financeiro" class="menu-item"><i class="ph ph-money"></i> Financeiro</a>
+    {% endif %}
+
+    {% if tem_permissao('estoque') %}
+    <a href="/estoque" class="menu-item"><i class="ph ph-package"></i> Estoque</a>
+    {% endif %}
+
+    {% if session['cargo'] == 'gerente' %}
+    <a href="/equipa" class="menu-item"><i class="ph ph-identification-badge"></i> Equipa</a>
+    {% endif %}
+<a href="/configuracoes" class="menu-item"><i class="ph ph-gear"></i> Configurações</a>
+    <div style="margin-top: auto;">
+        <a href="/logout" class="menu-item"><i class="ph ph-sign-out"></i> Sair</a>
+    </div>
+</nav>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>Controle de Estoque</h1>
+                <p style="color: var(--text-light);">Gerencie insumos de banho e produtos de venda.</p>
+            </div>
+            <button class="btn-add" onclick="abrirModal()">
+                <i class="ph ph-plus"></i> Adicionar Item
+            </button>
+        </div>
+
+        <div class="stock-stats">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3>{{ total_itens }}</h3>
+                    <span>Unidades em Estoque</span>
+                </div>
+                <i class="ph ph-package stat-icon" style="color: var(--primary-color);"></i>
+            </div>
+            
+            <div class="stat-card" style="border-left: 4px solid var(--danger-color);">
+                <div class="stat-info">
+                    <h3 style="color: var(--danger-color);">{{ alerta_baixo }}</h3>
+                    <span>Itens Abaixo do Mínimo</span>
+                </div>
+                <i class="ph ph-warning stat-icon" style="color: var(--danger-color);"></i>
+            </div>
+        </div>
+
+        <div class="stock-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Categoria</th>
+                        <th>Qtd Atual</th>
+                        <th>Nível</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        <td>
+                            <span class="product-name">{{ item['produto'] }}</span>
+                            <span style="font-size: 0.8rem; color: #9ca3af;">Mínimo: {{ item['qtd_minima'] }} {{ item['unidade'] }}</span>
+                        </td>
+                        <td><span class="product-cat">{{ item['categoria'] }}</span></td>
+                        <td style="font-weight: bold;">{{ item['qtd_atual'] }} {{ item['unidade'] }}</td>
+                        
+                        <td>
+                            <div class="stock-level-bar">
+                                <div class="level-fill {% if item['qtd_atual'] <= item['qtd_minima'] %}low{% else %}good{% endif %}" 
+                                     style="width: {% if item['qtd_atual'] <= item['qtd_minima'] %}20%{% else %}80%{% endif %};">
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <td>
+                            {% if item['qtd_atual'] <= item['qtd_minima'] %}
+                                <span class="status-badge status-low">Repor!</span>
+                            {% else %}
+                                <span class="status-badge status-ok">Confortável</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td style="display: flex; gap: 5px;">
+                            <form action="/estoque" method="POST" onsubmit="return confirm('Excluir este item?');" style="margin:0;">
+                                <input type="hidden" name="acao" value="deletar">
+                                <input type="hidden" name="id" value="{{ item['id'] }}">
+                                <button type="submit" class="btn-icon btn-trash" title="Excluir">
+                                    <i class="ph ph-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; color: #999;">
+                            Nenhum item no estoque. Adicione o primeiro!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <div id="modalEstoque" class="modal-overlay">
+        <div class="modal">
+            <h2>Novo Produto</h2>
+            <form action="/estoque" method="POST">
+                <input type="hidden" name="acao" value="adicionar">
+
+                <div class="form-group">
+                    <label>Nome do Produto</label>
+                    <input type="text" name="produto" placeholder="Ex: Condicionador Galão" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select name="categoria">
+                            <option>Uso Interno (Banho)</option>
+                            <option>Venda (Loja)</option>
+                            <option>Limpeza Geral</option>
+                            <option>Acabamento</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Unidade</label>
+                        <select name="unidade">
+                            <option>UN (Unidade)</option>
+                            <option>L (Litro)</option>
+                            <option>ml (Mililitro)</option>
+                            <option>CX (Caixa)</option>
+                            <option>KG (Quilo)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Qtd Inicial</label>
+                        <input type="number" name="qtd_atual" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Qtd Mínima (Alerta)</label>
+                        <input type="number" name="qtd_minima" placeholder="Ex: 2" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Preço de Custo (Opcional)</label>
+                    <input type="number" step="0.01" placeholder="R$ 0,00">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem;">
+                    <button type="button" onclick="fecharModal()" style="padding: 0.8rem; background: #e5e7eb; border: none; border-radius: 6px; cursor: pointer;">Cancelar</button>
+                    <button type="submit" style="padding: 0.8rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer;">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function abrirModal() { document.getElementById('modalEstoque').style.display = 'flex'; }
+        function fecharModal() { document.getElementById('modalEstoque').style.display = 'none'; }
+    </script>
+</body>
+</html>

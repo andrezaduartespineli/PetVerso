@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda - Pet Verso</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root { --primary-color: #0e7490; --secondary-color: #155e75; --bg-color: #f3f4f6; --text-dark: #1f2937; --success-color: #10b981; --danger-color: #ef4444; --warn-color: #f59e0b; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: 260px; background: white; border-right: 1px solid #e5e7eb; padding: 1.5rem; display: flex; flex-direction: column; }
+        .sidebar-header { margin-bottom: 3rem; display: flex; justify-content: center; }
+        .logo-circulo { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-color); padding: 3px; }
+        .menu-item { display: flex; align-items: center; gap: 12px; padding: 1rem; color: var(--text-dark); text-decoration: none; border-radius: 8px; margin-bottom: 0.5rem; transition: 0.3s; }
+        .menu-item:hover, .menu-item.active { background-color: #ecfeff; color: var(--primary-color); }
+
+        .main-content { flex: 1; padding: 2rem; overflow-y: auto; display: flex; flex-direction: column; }
+
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .nav-controle { display: flex; align-items: center; gap: 15px; background: white; padding: 8px 20px; border-radius: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .nav-seta { color: var(--text-dark); font-size: 1.2rem; cursor: pointer; text-decoration: none; width: 30px; height: 30px; display:flex; align-items:center; justify-content:center; border-radius: 50%; }
+        .nav-seta:hover { background: #f3f4f6; color: var(--primary-color); }
+        .nav-titulo { font-size: 1.1rem; font-weight: 600; color: var(--primary-color); min-width: 140px; text-align: center; }
+
+        .view-switch { display: flex; gap: 5px; background: #e5e7eb; padding: 4px; border-radius: 20px; }
+        .view-switch a { padding: 6px 15px; border-radius: 16px; text-decoration: none; font-size: 0.8rem; font-weight: 600; transition: 0.3s; }
+        .view-active { background: white; color: var(--primary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .view-inactive { background: transparent; color: #666; }
+
+        .agenda-list { display: flex; flex-direction: column; gap: 1rem; }
+        .time-slot { display: flex; align-items: center; background: white; padding: 1rem; border-radius: 12px; border-left: 5px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+        
+        .status-Agendado { border-left-color: var(--warn-color); }
+        .status-Concluído { border-left-color: var(--success-color); background-color: #f0fdf4; opacity: 0.9; }
+        .status-Cancelado { border-left-color: var(--danger-color); background-color: #fef2f2; opacity: 0.7; }
+        .status-Faltou { border-left-color: #6b7280; background-color: #f3f4f6; opacity: 0.7; }
+
+        .slot-time { width: 70px; font-weight: 600; font-size: 1.1rem; text-align: center; border-right: 1px solid #f3f4f6; margin-right: 1.5rem; color: #555; }
+        .slot-info { flex: 1; }
+        .slot-pet { font-size: 1.1rem; font-weight: 600; color: var(--text-dark); display: block; }
+        .slot-tutor { font-size: 0.85rem; color: #888; display: block; margin-bottom: 2px; }
+        .slot-service { color: #666; font-size: 0.9rem; background: #f3f4f6; padding: 2px 8px; border-radius: 4px; }
+        
+        .status-select { padding: 5px 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 0.85rem; cursor: pointer; outline: none; background: white; }
+        
+        .btn-icon { background: none; border: 1px solid #ddd; color: #666; padding: 5px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.85rem; transition:0.2s; }
+        .btn-icon:hover { border-color: var(--primary-color); color: var(--primary-color); background: #ecfeff; }
+
+        /* Calendário */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; background: white; padding: 20px; border-radius: 12px; }
+        .cal-day { min-height: 100px; border: 1px solid #f3f4f6; border-radius: 8px; padding: 8px; cursor: pointer; }
+        .cal-day:hover { border-color: var(--primary-color); }
+        .appt-dot { font-size: 0.7rem; padding: 2px 5px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; }
+        .dot-Concluído { background: #dcfce7; color: #166534; text-decoration: line-through; }
+        .dot-Agendado { background: #fef3c7; color: #d97706; }
+        .dot-Cancelado { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: white; width: 600px; padding: 2rem; border-radius: 12px; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 6px; }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+    <div class="sidebar-header">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-circulo">
+    </div>
+    
+    <a href="/dashboard" class="menu-item"><i class="ph ph-squares-four"></i> Visão Geral</a>
+
+    {% if tem_permissao('agenda') %}
+    <a href="/agenda" class="menu-item"><i class="ph ph-calendar-check"></i> Agenda</a>
+    {% endif %}
+
+    {% if tem_permissao('clientes') %}
+    <a href="/clientes" class="menu-item"><i class="ph ph-users"></i> Clientes</a>
+    {% endif %}
+
+    {% if tem_permissao('servicos') %}
+    <a href="/servicos" class="menu-item"><i class="ph ph-scissors"></i> Serviços</a>
+    {% endif %}
+
+    {% if tem_permissao('financeiro') %}
+    <a href="/financeiro" class="menu-item"><i class="ph ph-money"></i> Financeiro</a>
+    {% endif %}
+
+    {% if tem_permissao('estoque') %}
+    <a href="/estoque" class="menu-item"><i class="ph ph-package"></i> Estoque</a>
+    {% endif %}
+
+    {% if session['cargo'] == 'gerente' %}
+    <a href="/equipa" class="menu-item"><i class="ph ph-identification-badge"></i> Equipa</a>
+    {% endif %}
+<a href="/configuracoes" class="menu-item"><i class="ph ph-gear"></i> Configurações</a>
+    <div style="margin-top: auto;">
+        <a href="/logout" class="menu-item"><i class="ph ph-sign-out"></i> Sair</a>
+    </div>
+</nav>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div class="view-switch">
+                <a href="?modo=diario&data={{ data_atual }}" class="{% if modo == 'diario' %}view-active{% else %}view-inactive{% endif %}">Diário</a>
+                <a href="?modo=mensal&data={{ data_atual }}" class="{% if modo == 'mensal' %}view-active{% else %}view-inactive{% endif %}">Mensal</a>
+            </div>
+
+            <div class="nav-controle">
+                <a href="?modo={{ modo }}&data={{ link_anterior }}" class="nav-seta"><i class="ph ph-caret-left"></i></a>
+                <span class="nav-titulo">{{ texto_titulo }}</span>
+                <a href="?modo={{ modo }}&data={{ link_proximo }}" class="nav-seta"><i class="ph ph-caret-right"></i></a>
+            </div>
+
+            <button onclick="novoAgendamento()" style="background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                <i class="ph ph-plus"></i> Novo Agendamento
+            </button>
+        </div>
+
+        {% if modo == 'diario' %}
+        <div class="agenda-list">
+            {% for item in agendamentos %}
+            <div class="time-slot status-{{ item['status'] }}">
+                <div class="slot-time">{{ item['hora'] }}</div>
+                <div class="slot-info">
+                    <span class="slot-pet">
+                        {{ item['nome_pet'] }}
+                        {% if item['taxi'] == 'Sim' %}
+                            <span style="background:#ecfeff; color:#0e7490; font-size:0.75rem; padding:2px 6px; border-radius:4px; border:1px solid #0e7490; margin-left:5px;"><i class="ph ph-taxi"></i> Taxi</span>
+                        {% endif %}
+                    </span>
+                    {% if item['nome_tutor'] %}
+                        <span class="slot-tutor"><i class="ph ph-user"></i> {{ item['nome_tutor'] }}</span>
+                    {% endif %}
+                    <span class="slot-service">{{ item['servico'] }}</span>
+                    {% if item['observacoes'] %} <small style="color:orange; margin-left:10px;">({{ item['observacoes'] }})</small> {% endif %}
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    
+                    <button onclick="verFicha(this)"
+                        data-pet="{{ item['nome_pet'] }}"
+                        data-tutor="{{ item['nome_tutor'] }}"
+                        data-raca="{{ item['raca'] or 'Não informado' }}"
+                        data-porte="{{ item['porte'] or '--' }}"
+                        data-comp="{{ item['comportamento'] or 'Normal' }}"
+                        data-zap="{{ item['whatsapp'] or '' }}"
+                        data-obs="{{ item['obs_cliente'] or 'Nenhuma observação.' }}"
+                        class="btn-icon" title="Ver Ficha do Pet">
+                        <i class="ph ph-eye"></i>
+                    </button>
+
+                    <button onclick="editarAgendamento(this)"
+                        data-id="{{ item['id'] }}"
+                        data-cliente-id="{{ item['cliente_id'] }}"  data-pet="{{ item['nome_pet'] }}"
+                        data-pet="{{ item['nome_pet'] }}"
+                        data-tutor="{{ item['nome_tutor'] }}"
+                        data-servico="{{ item['servico'] }}"
+                        data-data="{{ item['data'] }}"
+                        data-hora="{{ item['hora'] }}"
+                        data-taxi="{{ item['taxi'] }}"
+                        data-obs="{{ item['observacoes'] }}"
+                        class="btn-icon" title="Editar">
+                        <i class="ph ph-pencil-simple"></i>
+                    </button>
+
+                    <a href="/nota/{{ item['id'] }}" class="btn-icon" title="Gerar Nota/Recibo" style="text-decoration: none; color: #4b5563;">
+                        <i class="ph ph-receipt"></i>
+                    </a>
+
+                    <form action="/atualizar_status" method="POST" style="margin:0;">
+                        <input type="hidden" name="id" value="{{ item['id'] }}">
+                        <select name="status" class="status-select" onchange="this.form.submit()" 
+                                style="{% if item['status'] == 'Concluído' %}color:green; font-weight:bold;{% elif item['status'] == 'Cancelado' %}color:red; text-decoration:line-through;{% endif %}">
+                            <option value="Agendado" {% if item['status'] == 'Agendado' %}selected{% endif %}>📅 Agendado</option>
+                            <option value="Concluído" {% if item['status'] == 'Concluído' %}selected{% endif %}>✅ Feito</option>
+                            <option value="Cancelado" {% if item['status'] == 'Cancelado' %}selected{% endif %}>❌ Cancelado</option>
+                            <option value="Faltou" {% if item['status'] == 'Faltou' %}selected{% endif %}>🚫 Faltou</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div style="text-align:center; padding:3rem; color:#999;"><p>Agenda livre neste dia.</p></div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if modo == 'mensal' %}
+        <div class="calendar-grid">
+            <div style="text-align:center; color:#aaa;">Seg</div><div style="text-align:center; color:#aaa;">Ter</div><div style="text-align:center; color:#aaa;">Qua</div>
+            <div style="text-align:center; color:#aaa;">Qui</div><div style="text-align:center; color:#aaa;">Sex</div><div style="text-align:center; color:#aaa;">Sáb</div><div style="text-align:center; color:#aaa;">Dom</div>
+            {% for semana in calendario %}
+                {% for dia in semana %}
+                    {% if dia == 0 %} <div class="cal-day" style="border:none; cursor:default;"></div>
+                    {% else %}
+                        {% set data_chave = data_obj.strftime('%Y-%m') ~ '-' ~ '%02d'|format(dia) %}
+                        <div class="cal-day" onclick="window.location.href='?modo=diario&data={{ data_chave }}'">
+                            <span style="font-weight:bold;">{{ dia }}</span>
+                            {% if data_chave in mapa_agendamentos %}
+                                {% for ag in mapa_agendamentos[data_chave] %}
+                                    <div class="appt-dot dot-{{ ag['status'] }}">{% if ag['taxi']=='Sim' %}🚕{% endif %} {{ ag['hora'] }} {{ ag['nome_pet'] }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </main>
+
+    <div id="modalAgenda" class="modal-overlay">
+        <div class="modal">
+            <h2 id="tituloModal" style="color:var(--primary-color);">Novo Agendamento</h2>
+            <form action="/agenda" method="POST" id="formAgenda">
+                <input type="hidden" name="acao" id="inputAcao" value="criar">
+                <input type="hidden" name="id" id="inputId">
+                <input type="hidden" name="modo_origem" value="{{ modo }}">
+                
+                <div style="display: flex; align-items: flex-end; gap: 10px; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                        <label>Pet / Cliente</label>
+                        
+                        <input type="text" id="inputNomeDisplay" list="lista_pets" placeholder="Busque pelo nome..." required autocomplete="off" onchange="selecionarCliente()">
+                        
+                        <input type="hidden" name="cliente_id" id="inputClienteId">
+                        
+                        <input type="hidden" name="nome_pet_input" id="inputNomeTexto">
+
+                        <datalist id="lista_pets">
+                            {% for pet in opcoes_pets %}
+                                <option data-id="{{ pet['id'] }}" value="{{ pet['nome_pet'] }} ({{ pet['nome_tutor'] }})">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+
+                    <a href="/clientes" style="background: #e0f2fe; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 10px 15px; border-radius: 6px; text-decoration: none; font-size: 0.9rem; font-weight: 600; white-space: nowrap; height: 42px; display: flex; align-items: center; margin-bottom: 15px;">
+                        <i class="ph ph-user-plus" style="margin-right: 5px;"></i> Novo Cliente
+                    </a>
+                </div>
+
+                <div class="form-row" style="display:flex; gap:15px;">
+                    <div style="flex:1;">
+                        <label>Serviço</label>
+                        <select name="servico" id="inputServico">
+                            {% for s in opcoes_servicos %}
+                            <option value="{{ s['nome'] }}">{{ s['nome'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; border: 1px dashed #16a34a; margin-bottom:15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0; color: #166534;">
+                        <input type="checkbox" name="taxi" id="inputTaxi" style="width: 20px; height: 20px; accent-color: #16a34a;">
+                        <i class="ph ph-taxi" style="font-size: 1.2rem;"></i> Incluir Taxi Dog (+ Taxa)
+                    </label>
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;"><label>Data</label><input type="date" name="data" id="inputData" value="{{ data_atual }}" required></div>
+                    <div style="flex:1;"><label>Hora</label><input type="time" name="hora" id="inputHora" required></div>
+                </div>
+
+                <label>Observações</label>
+                <textarea name="observacoes" id="inputObs" rows="2"></textarea>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1rem;">
+                    <button type="button" onclick="document.getElementById('modalAgenda').style.display='none'" style="background:#eee; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Cancelar</button>
+                    <button type="submit" style="background:var(--primary-color); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalFicha" class="modal-overlay">
+        <div class="modal" style="width: 400px; text-align: center;">
+            <h2 style="color: var(--primary-color); justify-content: center; margin-bottom: 5px;">
+                <i class="ph ph-paw-print"></i> <span id="fichaNome">Rex</span>
+            </h2>
+            <p id="fichaTutor" style="color: #666; margin-bottom: 20px;">Tutor: Carlos</p>
+
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 20px;">
+                <p><strong>Raça:</strong> <span id="fichaRaca">--</span></p>
+                <p><strong>Porte:</strong> <span id="fichaPorte">--</span></p>
+                <p><strong>Comportamento:</strong> <span id="fichaComp">--</span></p>
+                <p style="margin-top: 10px; color: #0e7490;"><strong>Obs:</strong> <span id="fichaObs">--</span></p>
+            </div>
+
+            <a id="fichaZap" href="#" target="_blank" style="display: block; background: #25D366; color: white; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 10px;">
+                <i class="ph ph-whatsapp-logo"></i> Chamar no WhatsApp
+            </a>
+
+            <button onclick="document.getElementById('modalFicha').style.display='none'" style="background: #eee; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; width: 100%;">Fechar</button>
+        </div>
+    </div>
+
+   <script>
+        // --- 1. LÓGICA DE SELEÇÃO INTELIGENTE (IDs) ---
+        function selecionarCliente() {
+            const inputDisplay = document.getElementById('inputNomeDisplay');
+            const inputId = document.getElementById('inputClienteId');
+            const inputTexto = document.getElementById('inputNomeTexto');
+            const datalist = document.getElementById('lista_pets');
+            
+            const valorDigitado = inputDisplay.value;
+            inputTexto.value = valorDigitado; // Salva o texto visual
+            
+            let achou = false;
+            // Procura na lista se tem esse nome exato para pegar o ID
+            for (let i = 0; i < datalist.options.length; i++) {
+                if (datalist.options[i].value === valorDigitado) {
+                    inputId.value = datalist.options[i].getAttribute('data-id');
+                    achou = true;
+                    break;
+                }
+            }
+            
+            // Se não achou na lista, limpa o ID (cadastro novo ou avulso)
+            if (!achou) {
+                inputId.value = '';
+            }
+        }
+
+        // --- 2. FUNÇÕES DO MODAL DE AGENDAMENTO ---
+        function novoAgendamento() {
+            document.getElementById('formAgenda').reset();
+            document.getElementById('inputAcao').value = 'criar';
+            document.getElementById('inputId').value = '';
+            document.getElementById('inputClienteId').value = ''; 
+            document.getElementById('tituloModal').innerText = 'Novo Agendamento';
+            document.getElementById('modalAgenda').style.display = 'flex';
+        }
+
+        function editarAgendamento(btn) {
+            document.getElementById('inputAcao').value = 'editar';
+            document.getElementById('inputId').value = btn.getAttribute('data-id');
+            document.getElementById('inputClienteId').value = btn.getAttribute('data-cliente-id') || ''; 
+            
+            // Lógica para preencher o nome composto "Pet (Tutor)"
+            let nomePet = btn.getAttribute('data-pet');
+            let nomeTutor = btn.getAttribute('data-tutor');
+            let texto = nomePet;
+            if(nomeTutor && nomeTutor !== 'None' && nomeTutor !== '') {
+                texto += ` (${nomeTutor})`;
+            }
+            
+            document.getElementById('inputNomeDisplay').value = texto;
+            document.getElementById('inputNomeTexto').value = texto;
+
+            document.getElementById('inputServico').value = btn.getAttribute('data-servico');
+            document.getElementById('inputData').value = btn.getAttribute('data-data');
+            document.getElementById('inputHora').value = btn.getAttribute('data-hora');
+            document.getElementById('inputObs').value = btn.getAttribute('data-obs') || '';
+            document.getElementById('inputTaxi').checked = (btn.getAttribute('data-taxi') === 'Sim');
+
+            document.getElementById('tituloModal').innerText = 'Reagendar / Editar';
+            document.getElementById('modalAgenda').style.display = 'flex';
+        }
+
+        // --- 3. FUNÇÃO DE VER FICHA (RESTAURADA!) ---
+        function verFicha(btn) {
+            // Preenche os dados no modal de ficha
+            document.getElementById('fichaNome').innerText = btn.getAttribute('data-pet');
+            let tutor = btn.getAttribute('data-tutor');
+            document.getElementById('fichaTutor').innerText = 'Tutor: ' + (tutor && tutor !== 'None' ? tutor : 'Não informado');
+            
+            document.getElementById('fichaRaca').innerText = btn.getAttribute('data-raca') || '--';
+            document.getElementById('fichaPorte').innerText = btn.getAttribute('data-porte') || '--';
+            document.getElementById('fichaComp').innerText = btn.getAttribute('data-comp') || '--';
+            document.getElementById('fichaObs').innerText = btn.getAttribute('data-obs') || 'Nenhuma observação.';
+            
+            // Configura o botão do WhatsApp da ficha
+            let zap = btn.getAttribute('data-zap');
+            let btnZap = document.getElementById('fichaZap');
+            
+            if (zap && zap !== 'None' && zap !== '') {
+                let numero = zap.replace(/\D/g, '');
+                if (numero.length >= 10 && numero.length <= 11) numero = '55' + numero;
+                
+                btnZap.href = `https://wa.me/${numero}`;
+                btnZap.style.display = 'block';
+            } else {
+                btnZap.style.display = 'none';
+            }
+
+            document.getElementById('modalFicha').style.display = 'flex';
+        }
+
+        // --- 4. VALIDAÇÃO AO SALVAR ---
+        document.getElementById('formAgenda').addEventListener('submit', function(e) {
+             const id = document.getElementById('inputClienteId').value;
+             // Se não tem ID vinculado, sugere o cadastro
+             if (!id) {
+                 const nomeDigitado = document.getElementById('inputNomeDisplay').value;
+                 // Se o campo não estiver vazio (para evitar loop infinito em edições estranhas)
+                 if(nomeDigitado) {
+                     // Verifica se o usuário quer cadastrar ou salvar avulso
+                     // Se ele clicar em CANCELAR no confirm, o form segue e salva sem ID (avulso)
+                     // Se clicar em OK, vai para a tela de clientes
+                     if(confirm("Este cliente não está vinculado a um cadastro oficial. Deseja cadastrar agora?")) {
+                         e.preventDefault(); // Para o salvamento
+                         let nome = nomeDigitado.split(' (')[0];
+                         window.location.href = `/clientes?novo_pet=${encodeURIComponent(nome)}`;
+                     }
+                 }
+             }
+        });
+    </script>
+</body>
+</html>

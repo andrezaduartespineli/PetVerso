@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipa - Pet Verso</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root {
+            --primary-color: #0e7490;
+            --secondary-color: #155e75;
+            --bg-color: #f3f4f6;
+            --text-dark: #1f2937;
+            --text-light: #9ca3af;
+            --success-color: #10b981;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: 260px; background: white; border-right: 1px solid #e5e7eb; padding: 1.5rem; display: flex; flex-direction: column; }
+        .sidebar-header { margin-bottom: 3rem; display: flex; justify-content: center; }
+        .logo-circulo { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-color); padding: 3px; }
+        .menu-item { display: flex; align-items: center; gap: 12px; padding: 1rem; color: var(--text-dark); text-decoration: none; border-radius: 8px; margin-bottom: 0.5rem; transition: 0.3s; cursor: pointer; }
+        .menu-item:hover, .menu-item.active { background-color: #ecfeff; color: var(--primary-color); }
+        .main-content { flex: 1; padding: 2rem; overflow-y: auto; }
+
+        /* Tabela */
+        .team-container { background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; background: #f9fafb; padding: 1rem; color: #9ca3af; font-size: 0.9rem; }
+        td { padding: 1rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        
+        .employee-profile { display: flex; align-items: center; gap: 10px; }
+        .avatar-circle { width: 40px; height: 40px; border-radius: 50%; background: #e0f2fe; color: var(--primary-color); display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase; }
+        
+        .role-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .role-tosador { background: #ecfeff; color: #0891b2; }
+        .role-recepcao { background: #fdf4ff; color: #c026d3; }
+        .role-gerente { background: #f0fdf4; color: #16a34a; }
+        .role-funcionario { background: #f3f4f6; color: #4b5563; }
+
+        .btn-action { background: none; border: none; cursor: pointer; color: var(--text-light); font-size: 1.2rem; padding: 5px; transition: 0.2s; }
+        .btn-edit:hover { color: var(--primary-color); }
+        .btn-trash:hover { color: #dc2626; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: white; width: 700px; max-width: 95%; padding: 2rem; border-radius: 12px; }
+        .modal h2 { margin-bottom: 1.5rem; color: var(--primary-color); border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+        
+        .form-row { display: flex; gap: 15px; margin-bottom: 1rem; }
+        .form-group { flex: 1; margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; font-weight: 600; }
+        .form-group input, .form-group select { width: 100%; padding: 0.7rem; border: 1px solid #d1d5db; border-radius: 6px; outline: none; }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <img src="{{ url_for('static', filename='sua-logo.png') }}" alt="Logo" class="logo-circulo">
+        </div>
+        
+        <a href="/dashboard" class="menu-item"><i class="ph ph-squares-four"></i> Visão Geral</a>
+
+        {% if tem_permissao('agenda') %}
+        <a href="/agenda" class="menu-item"><i class="ph ph-calendar-check"></i> Agenda</a>
+        {% endif %}
+
+        {% if tem_permissao('clientes') %}
+        <a href="/clientes" class="menu-item"><i class="ph ph-users"></i> Clientes</a>
+        {% endif %}
+
+        {% if tem_permissao('servicos') %}
+        <a href="/servicos" class="menu-item"><i class="ph ph-scissors"></i> Serviços</a>
+        {% endif %}
+
+        {% if tem_permissao('financeiro') %}
+        <a href="/financeiro" class="menu-item"><i class="ph ph-money"></i> Financeiro</a>
+        {% endif %}
+
+        {% if tem_permissao('estoque') %}
+        <a href="/estoque" class="menu-item"><i class="ph ph-package"></i> Estoque</a>
+        {% endif %}
+
+        {% if session['cargo'] == 'gerente' %}
+        <a href="/equipa" class="menu-item active"><i class="ph ph-identification-badge"></i> Equipa</a>
+        {% endif %}
+        
+        <a href="/configuracoes" class="menu-item"><i class="ph ph-gear"></i> Configurações</a>
+        
+        <div style="margin-top: auto;">
+            <a href="/logout" class="menu-item"><i class="ph ph-sign-out"></i> Sair</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h1>Gestão de Equipa</h1>
+                <p style="color: var(--text-light);">Administre colaboradores e acessos.</p>
+            </div>
+            <button onclick="novoColaborador()" style="background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-user-plus"></i> Novo Colaborador
+            </button>
+        </div>
+
+        <div class="team-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Colaborador</th>
+                        <th>Cargo</th>
+                        <th>Login</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for membro in equipe %}
+                    <tr>
+                        <td>
+                            <div class="employee-profile">
+                                <div class="avatar-circle">{{ membro['nome'][0:2] }}</div>
+                                <span style="font-weight: 600;">{{ membro['nome'] }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if membro['cargo'] == 'gerente' %} <span class="role-badge role-gerente">Gerente</span>
+                            {% elif membro['cargo'] == 'tosador' %} <span class="role-badge role-tosador">Tosador</span>
+                            {% elif membro['cargo'] == 'recepcao' %} <span class="role-badge role-recepcao">Recepção</span>
+                            {% else %} <span class="role-badge role-funcionario">Funcionário</span> {% endif %}
+                        </td>
+                        <td>{{ membro['usuario'] }}</td>
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                <button onclick="editarUsuario(this)" 
+                                    data-id="{{ membro['id'] }}"
+                                    data-nome="{{ membro['nome'] }}"
+                                    data-cargo="{{ membro['cargo'] }}"
+                                    data-user="{{ membro['usuario'] }}"
+                                    data-senha="{{ membro['senha'] }}"
+                                    data-perms="{{ membro['permissoes'] }}"
+                                    class="btn-action btn-edit" title="Editar">
+                                    <i class="ph ph-pencil-simple"></i>
+                                </button>
+
+                                {% if session['user_id'] != membro['id'] %}
+                                <form action="/equipa" method="POST" onsubmit="return confirm('Remover {{ membro['nome'] }}?');" style="margin:0;">
+                                    <input type="hidden" name="acao" value="deletar">
+                                    <input type="hidden" name="id" value="{{ membro['id'] }}">
+                                    <button type="submit" class="btn-action btn-trash" title="Remover"><i class="ph ph-trash"></i></button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" style="text-align:center; padding:2rem; color:#999;">Nenhum funcionário cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <div id="modalEquipe" class="modal-overlay">
+        <div class="modal"> 
+            <h2 id="tituloModal" style="display:flex; align-items:center; gap:10px;">
+                <i class="ph ph-user-plus"></i> Cadastro de Funcionário
+            </h2>
+            
+            <form action="/equipa" method="POST" id="formEquipa">
+                <input type="hidden" name="acao" value="salvar">
+                <input type="hidden" name="id" id="inputId">
+
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" name="nome" id="inputNome" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Usuário (Login)</label>
+                        <input type="text" name="usuario" id="inputUser" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="text" name="senha" id="inputSenha" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Cargo</label>
+                    <select name="cargo" id="inputCargo" onchange="togglePermissoes()">
+                        <option value="funcionario">Funcionário</option>
+                        <option value="gerente">Gerente (Acesso Total)</option>
+                    </select>
+                </div>
+
+                <div id="areaPermissoes" style="background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 15px;">
+                    <label style="margin-bottom: 10px; display: block; color: var(--primary-color);">Acessos permitidos:</label>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="perms" value="agenda" class="chk-perm"> Agenda
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="perms" value="clientes" class="chk-perm"> Clientes
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="perms" value="servicos" class="chk-perm"> Serviços
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="perms" value="financeiro" class="chk-perm"> Financeiro
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="perms" value="estoque" class="chk-perm"> Estoque
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1rem;">
+                    <button type="button" onclick="fecharModal()" style="background:#eee; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Cancelar</button>
+                    <button type="submit" style="background:var(--primary-color); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Funções que estavam faltando
+        function novoColaborador() {
+            document.getElementById('formEquipa').reset();
+            document.getElementById('inputId').value = ''; 
+            document.getElementById('tituloModal').innerText = 'Cadastro de Funcionário';
+            
+            // Limpa checkboxes
+            document.querySelectorAll('.chk-perm').forEach(chk => chk.checked = false);
+            togglePermissoes(); // Garante estado inicial correto
+            
+            document.getElementById('modalEquipe').style.display = 'flex';
+        }
+
+        function fecharModal() {
+            document.getElementById('modalEquipe').style.display = 'none';
+        }
+
+        function togglePermissoes() {
+            const cargo = document.getElementById('inputCargo').value;
+            const area = document.getElementById('areaPermissoes');
+            if (cargo === 'gerente') {
+                area.style.display = 'none';
+            } else {
+                area.style.display = 'block';
+            }
+        }
+
+        function editarUsuario(btn) {
+            document.getElementById('inputId').value = btn.getAttribute('data-id');
+            document.getElementById('inputNome').value = btn.getAttribute('data-nome');
+            document.getElementById('inputUser').value = btn.getAttribute('data-user');
+            document.getElementById('inputSenha').value = btn.getAttribute('data-senha');
+            document.getElementById('inputCargo').value = btn.getAttribute('data-cargo');
+            
+            // Limpa todas as caixas
+            document.querySelectorAll('.chk-perm').forEach(chk => chk.checked = false);
+
+            // Marca as que o usuário tem
+            let perms = btn.getAttribute('data-perms');
+            if (perms) {
+                let lista = perms.split(',');
+                lista.forEach(p => {
+                    let checkbox = document.querySelector(`input[value="${p}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+
+            togglePermissoes();
+            document.getElementById('tituloModal').innerText = 'Editar Usuário';
+            document.getElementById('modalEquipe').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>

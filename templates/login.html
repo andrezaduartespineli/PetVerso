@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Pet Verso</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root {
+            --primary-color: #0e7490;
+            --secondary-color: #155e75;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-dark: #1f2937;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { 
+            height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+        }
+        .login-card {
+            background: var(--card-bg); padding: 2.5rem; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 400px; text-align: center;
+        }
+        .logo-area { margin-bottom: 2rem; color: var(--primary-color); }
+        .logo-placeholder { font-size: 2rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .input-group { margin-bottom: 1.5rem; text-align: left; }
+        .input-group label { display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-dark); }
+        .input-group input {
+            width: 100%; padding: 0.8rem; border: 1px solid #e5e7eb; border-radius: 8px; outline: none; transition: 0.3s;
+        }
+        .input-group input:focus { border-color: var(--primary-color); }
+        .btn-primary {
+            width: 100%; padding: 0.8rem; background-color: var(--primary-color); color: white; border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; transition: 0.3s; font-weight: 600;
+        }
+        .btn-primary:hover { background-color: var(--secondary-color); }
+        
+        /* Mensagem de Erro */
+        .alert-error {
+            background: #fee2e2; color: #ef4444; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; border: 1px solid #fecaca;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="logo-area">
+            <div class="logo-placeholder">
+                <i class="ph ph-paw-print"></i> PET VERSO
+            </div>
+            <p style="color: #6b7280; font-size: 0.9rem; margin-top: 5px;">Sistema de Gestão Profissional</p>
+        </div>
+
+        {% if erro %}
+            <div class="alert-error">
+                <i class="ph ph-warning-circle"></i> {{ erro }}
+            </div>
+        {% endif %}
+
+        <form action="/login" method="POST">
+            <div class="input-group">
+                <label>Usuário</label>
+                <input type="text" name="usuario" placeholder="admin" required>
+            </div>
+            <div class="input-group">
+                <label>Senha</label>
+                <input type="password" name="senha" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-primary">Entrar no Sistema</button>
+        </form>
+    </div>
+</body>
+</html>

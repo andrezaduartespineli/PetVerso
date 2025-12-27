@@ -1,0 +1,20 @@
+/* CSS LOGO*/
+        .sidebar-header {
+    display: flex;
+    justify-content: center; /* Centraliza horizontalmente */
+    align-items: center;     /* Centraliza verticalmente */
+    margin-bottom: 2rem;     /* Espaço abaixo da logo */
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f3f4f6; /* Opcional: linha sutil abaixo da logo */
+}
+
+.logo-circulo {
+    width: 90px;             /* Logo maior para destaque */
+    height: 90px;            /* Altura igual a largura */
+    border-radius: 50%;      /* Deixa redondo */
+    object-fit: cover;       /* Ajusta a imagem dentro do círculo */
+    border: 3px solid var(--primary-color); /* Borda elegante */
+    padding: 3px;            /* Espaço entre a borda e a foto */
+    background: white;
+}
+/* FIM CSS LOGO*/

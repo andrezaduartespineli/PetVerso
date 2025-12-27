@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Nota de Serviço - Pet Verso</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { background: #525659; display: flex; justify-content: center; padding: 20px; font-family: 'Poppins', sans-serif; }
+        
+        /* Folha A4 */
+        .page {
+            background: white; width: 21cm; min-height: 29.7cm; padding: 2cm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3); position: relative;
+        }
+
+        /* Cabeçalho */
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0e7490; padding-bottom: 20px; margin-bottom: 20px; }
+        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .logo-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+        .company-info h1 { margin: 0; color: #0e7490; font-size: 1.5rem; }
+        .company-info p { margin: 2px 0; font-size: 0.8rem; color: #555; }
+
+        .invoice-details { text-align: right; }
+        .invoice-title { font-size: 1.2rem; font-weight: bold; color: #333; text-transform: uppercase; }
+        .invoice-date { color: #666; font-size: 0.9rem; }
+
+        /* Dados do Cliente */
+        .section-title { background: #f3f4f6; padding: 5px 10px; font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; border-left: 4px solid #0e7490; }
+        .client-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 30px; font-size: 0.9rem; }
+        
+        /* Tabela */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background: #0e7490; color: white; padding: 10px; text-align: left; font-size: 0.9rem; }
+        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .col-price { text-align: right; }
+
+        /* Totais */
+        .total-section { display: flex; justify-content: flex-end; }
+        .total-box { width: 250px; }
+        .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+        .final-total { font-size: 1.2rem; font-weight: bold; color: #0e7490; border-top: 2px solid #0e7490; padding-top: 5px; }
+
+        /* Rodapé */
+        .footer { position: absolute; bottom: 2cm; left: 2cm; right: 2cm; text-align: center; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
+
+        /* Botões de Ação (Não saem na impressão) */
+        .actions { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 50px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: 0.2s; text-decoration: none; justify-content: center; }
+        .btn:hover { transform: scale(1.05); }
+        .btn-print { background: #0e7490; color: white; }
+        .btn-whatsapp { background: #25D366; color: white; }
+        .btn-back { background: #fff; color: #333; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .page { box-shadow: none; width: 100%; height: auto; padding: 0; margin: 0; }
+            .actions { display: none; }
+            @page { margin: 1.5cm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="actions">
+        <button onclick="window.print()" class="btn btn-print"><i class="ph ph-printer"></i> Imprimir / PDF</button>
+        <a href="#" id="btnZap" target="_blank" class="btn btn-whatsapp"><i class="ph ph-whatsapp-logo"></i> Enviar WhatsApp</a>
+        <a href="/agenda" class="btn btn-back"><i class="ph ph-arrow-left"></i> Voltar</a>
+    </div>
+
+   <div class="header">
+            <div class="logo-area">
+                <img src="{{ url_for('static', filename='sua-logo.png') }}" class="logo-img" alt="Logo">
+                <div class="company-info">
+                    <h1>{{ nota['empresa_nome'] }}</h1>
+                    <p>{{ nota['empresa_endereco'] }}</p>
+                    <p>CNPJ: {{ nota['empresa_cnpj'] }}</p>
+                    <p>{{ nota['empresa_telefone'] }} | {{ nota['empresa_instagram'] }}</p>
+                </div>
+            </div>
+            <div class="invoice-details">
+                <div class="invoice-title">Orçamento / Recibo</div>
+                <div class="invoice-date">Data: {{ nota['data'] }}</div>
+                <div class="invoice-date">Pedido #{{ nota['id'] }}</div>
+            </div>
+        </div>
+        
+        <div class="section-title">DADOS DO CLIENTE</div>
+        <div class="client-info">
+            <div><strong>Tutor:</strong> {{ nota['tutor'] }}</div>
+            <div><strong>Pet:</strong> {{ nota['pet'] }}</div>
+            <div><strong>CPF:</strong> {{ nota['cpf'] }}</div>
+            <div><strong>Endereço:</strong> {{ nota['endereco'] }}</div>
+        </div>
+
+        <div class="section-title">DESCRIÇÃO DOS SERVIÇOS</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Serviço</th>
+                    <th class="col-price">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ nota['servico'] }}</td>
+                    <td class="col-price">R$ {{ "%.2f"|format(nota['valor_servico']) }}</td>
+                </tr>
+                {% if nota['tem_taxi'] %}
+                <tr>
+                    <td>Taxa de Taxi Dog (Busca e Leva)</td>
+                    <td class="col-price">R$ {{ "%.2f"|format(nota['valor_taxi']) }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <div class="total-section">
+            <div class="total-box">
+                <div class="total-row final-total">
+                    <span>TOTAL A PAGAR</span>
+                    <span>R$ {{ "%.2f"|format(nota['total']) }}</span>
+                </div>
+            </div>
+        </div>
+
+        {% if nota['observacoes'] %}
+        <div style="margin-top: 30px; padding: 15px; background: #f9fafb; border-radius: 8px; font-size: 0.9rem; color: #555;">
+            <strong>Observações:</strong> {{ nota['observacoes'] }}
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <p>Obrigado pela preferência! Cuide bem do seu amigo.</p>
+            <p>Este documento não possui valor fiscal oficial.</p>
+        </div>
+    </div>
+
+    <script>
+        // 1. Pega os dados do Python
+        // O 'or ""' garante que não quebre se estiver vazio
+        let telefoneRaw = "{{ nota['whatsapp'] or '' }}"; 
+        
+        // 2. Limpa o telefone (deixa só números)
+        let telefone = telefoneRaw.replace(/\D/g, '');
+
+        // 3. Verifica se precisa adicionar o 55 (Brasil)
+        // Se o número tiver entre 10 e 11 dígitos (ex: 11999998888), adiciona o 55 na frente
+        if (telefone.length >= 10 && telefone.length <= 11) {
+            telefone = '55' + telefone;
+        }
+
+        // 4. Monta o texto da mensagem
+        const nomeTutor = "{{ nota['tutor'] }}";
+        const nomePet = "{{ nota['pet'] }}";
+        const data = "{{ nota['data'] }}";
+        const servico = "{{ nota['servico'] }}";
+        // Formata o valor no Javascript para garantir
+        const total = "{{ '%.2f'|format(nota['total']) }}".replace('.', ','); 
+
+        // Usamos \n para pular linha aqui no código JS
+        const textoMensagem = `Olá ${nomeTutor}! 🐾\n\nSegue o resumo do atendimento do(a) *${nomePet}*:\n\n🗓 Data: ${data}\n✂ Serviço: ${servico}\n💰 *Total: R$ ${total}*\n\nObrigado pela preferência!`;
+
+        // 5. O SEGREDO: encodeURIComponent
+        // Isso transforma espaços e enters em códigos que o navegador entende
+        const textoCodificado = encodeURIComponent(textoMensagem);
+
+        // 6. Atualiza o link do botão
+        const btnZap = document.getElementById('btnZap');
+
+        if (telefone.length > 10) {
+            // Se tem número válido, cria o link
+            btnZap.href = `https://wa.me/${telefone}?text=${textoCodificado}`;
+        } else {
+            // Se não tem número, avisa ao clicar
+            btnZap.href = "#";
+            btnZap.onclick = function() {
+                alert("O número de WhatsApp deste cliente não foi preenchido ou é inválido.");
+            };
+            // Opcional: Deixa o botão cinza
+            btnZap.style.background = "#ccc";
+            btnZap.style.cursor = "not-allowed";
+        }
+    </script>
+
+</body>
+</html>
