@@ -75,36 +75,34 @@ def logout():
 
 @app.route('/dashboard')
 def dashboard():
-    if 'usuario_logado' not in session: return redirect('/login')
+    # CORREÇÃO AQUI: Verifica 'user_id' em vez de 'usuario_logado'
+    if 'user_id' not in session: return redirect('/login')
     
     conn = get_db_connection()
     
-    # Data de Hoje (para filtrar o que acontece hoje)
+    # Data de Hoje
     hoje = date.today().strftime('%Y-%m-%d')
 
-    # 1. TOTAL AGENDAMENTOS (Hoje)
+    # 1. TOTAL AGENDAMENTOS
     agendamentos_hoje = conn.execute("SELECT COUNT(*) FROM agenda WHERE data = ?", (hoje,)).fetchone()[0]
 
-    # 2. FATURAMENTO (Hoje) - Soma apenas 'Entrada'
+    # 2. FATURAMENTO
     resultado_fatura = conn.execute("SELECT SUM(valor) FROM financeiro WHERE tipo = 'Entrada' AND data = ?", (hoje,)).fetchone()[0]
-    faturamento_hoje = resultado_fatura if resultado_fatura else 0.0 # Se for None, vira 0.0
+    faturamento_hoje = resultado_fatura if resultado_fatura else 0.0
 
-    # 3. ESTOQUE CRÍTICO (Conta itens abaixo do mínimo)
+    # 3. ESTOQUE CRÍTICO
     estoque_critico = conn.execute("SELECT COUNT(*) FROM estoque WHERE qtd_atual < qtd_minima").fetchone()[0]
 
-    # 4. LISTA DOS PRÓXIMOS (Traz os agendamentos de hoje ordenados por hora)
+    # 4. LISTA DOS PRÓXIMOS
     proximos_agendamentos = conn.execute("SELECT * FROM agenda WHERE data = ? ORDER BY hora ASC", (hoje,)).fetchall()
 
     conn.close()
 
-    # Envia tudo para o HTML
     return render_template('dashboard.html', 
                            total_agendamentos=agendamentos_hoje,
                            faturamento=faturamento_hoje,
                            estoque_critico=estoque_critico,
                            proximos=proximos_agendamentos)
-
-# ... (imports e configurações iniciais iguais)
 
 # ROTA SERVIÇOS (NOVA)
 @app.route('/servicos', methods=['GET', 'POST'])

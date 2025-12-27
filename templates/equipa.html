@@ -19,12 +19,22 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
 
-        .sidebar { width: 260px; background: white; border-right: 1px solid #e5e7eb; padding: 1.5rem; display: flex; flex-direction: column; }
-        .sidebar-header { margin-bottom: 3rem; display: flex; justify-content: center; }
-        .logo-circulo { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-color); padding: 3px; }
-        .menu-item { display: flex; align-items: center; gap: 12px; padding: 1rem; color: var(--text-dark); text-decoration: none; border-radius: 8px; margin-bottom: 0.5rem; transition: 0.3s; cursor: pointer; }
+         /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px; background-color: white; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; padding: 1.5rem; flex-shrink: 0;
+        }
+        .sidebar-header { margin-bottom: 3rem; display: flex; align-items: center; gap: 10px; color: var(--primary-color); font-weight: bold; font-size: 1.2rem; }
+        
+        .menu-item {
+            display: flex; align-items: center; gap: 12px; padding: 1rem; color: var(--text-dark); text-decoration: none;
+            border-radius: 8px; margin-bottom: 0.5rem; transition: 0.3s; cursor: pointer;
+        }
         .menu-item:hover, .menu-item.active { background-color: #ecfeff; color: var(--primary-color); }
+        .menu-item i { font-size: 1.3rem; }
+
+        /* --- MAIN CONTENT --- */
         .main-content { flex: 1; padding: 2rem; overflow-y: auto; }
+        
 
         /* Tabela */
         .team-container { background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -59,42 +69,42 @@
 <body>
 
     <nav class="sidebar">
-        <div class="sidebar-header">
-            <img src="{{ url_for('static', filename='sua-logo.png') }}" alt="Logo" class="logo-circulo">
-        </div>
-        
-        <a href="/dashboard" class="menu-item"><i class="ph ph-squares-four"></i> Visão Geral</a>
+    <div class="sidebar-header">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-circulo">
+    </div>
+    
+    <a href="/dashboard" class="menu-item"><i class="ph ph-squares-four"></i> Visão Geral</a>
 
-        {% if tem_permissao('agenda') %}
-        <a href="/agenda" class="menu-item"><i class="ph ph-calendar-check"></i> Agenda</a>
-        {% endif %}
+    {% if tem_permissao('agenda') %}
+    <a href="/agenda" class="menu-item"><i class="ph ph-calendar-check"></i> Agenda</a>
+    {% endif %}
 
-        {% if tem_permissao('clientes') %}
-        <a href="/clientes" class="menu-item"><i class="ph ph-users"></i> Clientes</a>
-        {% endif %}
+    {% if tem_permissao('clientes') %}
+    <a href="/clientes" class="menu-item"><i class="ph ph-users"></i> Clientes</a>
+    {% endif %}
 
-        {% if tem_permissao('servicos') %}
-        <a href="/servicos" class="menu-item"><i class="ph ph-scissors"></i> Serviços</a>
-        {% endif %}
+    {% if tem_permissao('servicos') %}
+    <a href="/servicos" class="menu-item"><i class="ph ph-scissors"></i> Serviços</a>
+    {% endif %}
 
-        {% if tem_permissao('financeiro') %}
-        <a href="/financeiro" class="menu-item"><i class="ph ph-money"></i> Financeiro</a>
-        {% endif %}
+    {% if tem_permissao('financeiro') %}
+    <a href="/financeiro" class="menu-item"><i class="ph ph-money"></i> Financeiro</a>
+    {% endif %}
 
-        {% if tem_permissao('estoque') %}
-        <a href="/estoque" class="menu-item"><i class="ph ph-package"></i> Estoque</a>
-        {% endif %}
+    {% if tem_permissao('estoque') %}
+    <a href="/estoque" class="menu-item"><i class="ph ph-package"></i> Estoque</a>
+    {% endif %}
 
-        {% if session['cargo'] == 'gerente' %}
-        <a href="/equipa" class="menu-item active"><i class="ph ph-identification-badge"></i> Equipa</a>
-        {% endif %}
-        
-        <a href="/configuracoes" class="menu-item"><i class="ph ph-gear"></i> Configurações</a>
-        
-        <div style="margin-top: auto;">
-            <a href="/logout" class="menu-item"><i class="ph ph-sign-out"></i> Sair</a>
-        </div>
-    </nav>
+    {% if session['cargo'] == 'gerente' %}
+    <a href="/equipa" class="menu-item"><i class="ph ph-identification-badge"></i> Equipa</a>
+    {% endif %}
+
+    <a href="/configuracoes" class="menu-item"><i class="ph ph-gear"></i> Configurações</a>
+
+    <div style="margin-top: auto;">
+        <a href="/logout" class="menu-item"><i class="ph ph-sign-out"></i> Sair</a>
+    </div>
+</nav>
 
     <main class="main-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
